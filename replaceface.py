@@ -186,18 +186,47 @@ def calculate_face_orientation(landmarks: Dict[str, Tuple[int, int]]) -> Tuple[f
 
 def get_retina_face_json_result_filepath(img_filepath):
     """
-    Add postfix to file stem and change extension to json and return
+    Add postfix to file stem and change extension to json and return the 
+    resulting filepath.
+
+    Args:
+        img_filepath (str): The filepath of the input image.
+
+    Returns:
+        str: The filepath of the JSON output file.
+
     """
     p = Path(img_filepath)
     json_out_filepath = p.with_name(f"{p.stem}_retinaface.json")
     return json_out_filepath
 
 def store_retina_face_result(json_out_filepath, single_face_dict):
+    """
+    Store the single face dictionary as a JSON file.
+
+    Args:
+        json_out_filepath (str): The filepath to store the JSON file.
+        single_face_dict (dict): The dictionary containing the face information.
+
+    Returns:
+        bool: True if the JSON file was successfully stored, False otherwise.
+
+    """
     with open(json_out_filepath, "w") as outfile:
         json.dump(single_face_dict, outfile, indent=4, cls=NumpyArrayEncoder)
     return True
 
 def read_retina_face_json_annotation_file(json_annotation_filepath):
+    """
+    Read and load the face detection results from a JSON annotation file.
+
+    Args:
+        json_annotation_filepath (str): The filepath of the JSON annotation file.
+
+    Returns:
+        dict: A dictionary containing the face detection results.
+
+    """
     face_detection_result = {}
     with open(json_annotation_filepath, "r") as f:
         face_detection_result = json.load(f)
@@ -212,6 +241,26 @@ def replace_face(
         is_random_margin=False,
         clone=False
     ):
+    """
+    Replace a detected top most face in a target image with a source face.
+
+    Args:
+        source_cropped_face_path (str): The filepath of the source cropped face image. It may be aligned and some margin added. 
+                                        So you can directly put in target image.
+
+        target_image_path (str): The filepath of the target image.
+        target_face_dict (dict, optional): The dictionary containing the face detection results of the target image.
+            If not provided, the function will try to load the face detection results from a JSON file associated with the target image.
+            If the JSON file doesn't exist, the function will perform face detection on the target image.
+            Defaults to an empty dictionary.
+        is_add_margin (bool, optional): Flag to add a margin around the replaced face. Defaults to True.
+        is_random_margin (bool, optional): Flag to add a random margin. Defaults to False.
+        clone (bool, optional): Flag to clone the source face seamlessly onto the target image using cv2.seamlessClone. Defaults to False.
+
+    Returns:
+        numpy.ndarray or None: The modified target image with the replaced face. Returns None if the face detection results are not available.
+
+    """
     # read
     source_cropped_face = cv2.imread(str(source_cropped_face_path))
     target_image = cv2.imread(str(target_image_path))
@@ -305,7 +354,7 @@ def replace_face(
         return target_image
     else:
         return None
-    
+  
 if __name__ == '__main__':
 
     BASE_DIR = Path(__file__).resolve().parent
@@ -314,7 +363,7 @@ if __name__ == '__main__':
     parser.add_argument('-s','--source',help='Path to source image',required=True)
     parser.add_argument('-t','--target',help='Path to target image',required=True)
     parser.add_argument('-o','--output',help='Path to output directory',default='./outputs')
-    parser.add_argument('--clone',help='Whether to use seamless cloning or not', action='store_true')
+    parser.add_argument('--use_seamless_clone',help='Whether to use seamless cloning or not', action='store_true')
     args = parser.parse_args()
 
     # Grab commands arguments
@@ -324,12 +373,12 @@ if __name__ == '__main__':
     output_dir_path = Path(args.output)
     os.makedirs(output_dir_path, exist_ok=True)
 
-    use_clone = False
-    if args.clone:
-        use_clone = True
+    use_seamless_clone = False
+    if args.use_seamless_clone:
+        use_seamless_clone = True
 
     # Face replacement
-    replaced = replace_face(source_path, target_path, clone=use_clone)
+    replaced = replace_face(source_path, target_path, clone=use_seamless_clone)
     
     if np.any(replaced):
         # Save output in output_dir
