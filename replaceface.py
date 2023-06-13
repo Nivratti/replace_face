@@ -18,6 +18,14 @@ from retinaface import RetinaFace
 
 
 class NumpyArrayEncoder(json.JSONEncoder):
+    """
+    JSON encoder class for encoding NumPy arrays.
+
+    This encoder extends the default JSONEncoder class to handle encoding of NumPy arrays.
+    It converts NumPy integers to Python integers, NumPy floats to Python floats,
+    and NumPy arrays to Python lists.
+
+    """
     def default(self, obj):
         if isinstance(obj, np.integer):
             return int(obj)
