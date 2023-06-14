@@ -15,7 +15,18 @@ from nb_utils.error_handling import trace_error
 
 from typing import Dict, Tuple
 
-from face_detection import *
+try:
+    from replace_face.face_detection import (
+        get_face_det_res_json_filepath,
+        read_face_det_json_annotation_file,
+        detect_faces,
+        store_face_det_result,
+        get_face_coordinates,
+        calculate_face_orientation,
+        add_margin_to_rect,
+    )
+except Exception as e:
+    from face_detection import *
 
 def replace_face(
         source_cropped_face_path, 
@@ -46,8 +57,12 @@ def replace_face(
 
     """
     # read
-    source_cropped_face = cv2.imread(str(source_cropped_face_path))
-    target_image = cv2.imread(str(target_image_path))
+    # source_cropped_face = cv2.imread(str(source_cropped_face_path))
+    # target_image_bgr = cv2.imread(str(target_image_path))
+    # target_image = cv2.cvtColor(target_image_bgr, cv2.COLOR_BGR2RGB)
+
+    source_cropped_face = np.array(Image.open(source_cropped_face_path))
+    target_image = np.array(Image.open(target_image_path))
 
     if target_image is None:
         logger.error(f"error reading target image..")
@@ -116,8 +131,8 @@ def replace_face(
                     # Upside-Down
                     left_margin_percent = 0.35 
                     right_margin_percent = 0.35
-                    top_margin_percent = 0.35
-                    bottom_margin_percent = 0.3
+                    top_margin_percent = 0.4
+                    bottom_margin_percent = 0.4
             
             coordinates = add_margin_to_rect(
                 rect=coordinates, 
