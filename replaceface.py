@@ -57,12 +57,13 @@ def replace_face(
 
     """
     # read
-    # source_cropped_face = cv2.imread(str(source_cropped_face_path))
-    # target_image_bgr = cv2.imread(str(target_image_path))
-    # target_image = cv2.cvtColor(target_image_bgr, cv2.COLOR_BGR2RGB)
+    source_cropped_face_bgr = cv2.imread(str(source_cropped_face_path))
+    source_cropped_face = cv2.cvtColor(source_cropped_face_bgr, cv2.COLOR_BGR2RGB)
+    target_image_bgr = cv2.imread(str(target_image_path))
+    target_image = cv2.cvtColor(target_image_bgr, cv2.COLOR_BGR2RGB)
 
-    source_cropped_face = np.array(Image.open(source_cropped_face_path))
-    target_image = np.array(Image.open(target_image_path))
+    # source_cropped_face = np.array(Image.open(source_cropped_face_path))
+    # target_image = np.array(Image.open(target_image_path))
 
     if target_image is None:
         logger.error(f"error reading target image..")
@@ -72,12 +73,12 @@ def replace_face(
         json_annotation_filepath = get_face_det_res_json_filepath(target_image_path)
         if os.path.exists(json_annotation_filepath):
             faces = read_face_det_json_annotation_file(json_annotation_filepath)
-            logger.info(f"loaded face detection result from .json file")
+            logger.debug(f"loaded face detection result from .json file")
         else:
             faces = detect_faces(target_image)
             # save result as a json
             store_face_det_result(json_annotation_filepath, faces)
-            logger.info(f"Stored face detection result in .json")
+            logger.debug(f"Stored face detection result in .json")
 
     if faces:
         target_face_dict = faces[0]

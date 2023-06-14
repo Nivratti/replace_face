@@ -168,7 +168,7 @@ def calculate_face_orientation(landmarks: Dict[str, Tuple[int, int]]) -> Tuple[f
             The orientation can be one of the following values: "Upside-Down", "Rotated-Left",
             "Rotated-Right", or "Upright".
     """
-    logger.info(f"landmarks: {landmarks}")
+    logger.debug(f"landmarks: {landmarks}")
     # from IPython import embed; embed()
 
     if isinstance(landmarks, (list, np.ndarray)):
