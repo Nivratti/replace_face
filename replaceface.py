@@ -14,7 +14,6 @@ from loguru import logger
 from nb_utils.error_handling import trace_error
 
 from typing import Dict, Tuple
-from retinaface import RetinaFace
 
 
 class NumpyArrayEncoder(json.JSONEncoder):
@@ -84,6 +83,8 @@ def find_get_top_face_retina_face(image):
         Exception: If there is an error while finding the face or processing the image.
 
     """
+    from retinaface import RetinaFace
+
     resp = RetinaFace.detect_faces(image)
     if resp:
         try:
