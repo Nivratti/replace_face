@@ -16,31 +16,28 @@ from nb_utils.error_handling import trace_error
 from typing import Dict, Tuple
 
 try:
-    from replace_face.face_detection import (
-        get_face_det_res_json_filepath,
-        read_face_det_json_annotation_file,
-        detect_faces,
-        store_face_det_result,
-        get_face_coordinates,
-        calculate_face_orientation,
-        add_margin_to_rect,
-    )
+    from replace_face.face_detection import FaceDetector
 except Exception as e:
-    from face_detection import *
+    from face_detection import FaceDetector
 
-def replace_face(
-        source_cropped_face_path, 
+## Init face detector
+face_detector = FaceDetector(is_warmup=False)
+
+def perform_face_replacement(
+        source_image_path, 
         target_image_path, 
         target_face_dict={},
+        is_detect_source_face=True,
         is_add_margin=True,
         is_random_margin=False,
-        clone=False
+        use_seamless_clone=True,
+        is_paste_on_transparent_container=False,
     ):
     """
     Replace a detected top most face in a target image with a source face.
 
     Args:
-        source_cropped_face_path (str): The filepath of the source cropped face image. It may be aligned and some margin added. 
+        source_image_path (str): The filepath of the source face image. It may be aligned and some margin added. 
                                         So you can directly put in target image.
 
         target_image_path (str): The filepath of the target image.
@@ -57,52 +54,55 @@ def replace_face(
 
     """
     # read
-    source_cropped_face_bgr = cv2.imread(str(source_cropped_face_path))
-    source_cropped_face = cv2.cvtColor(source_cropped_face_bgr, cv2.COLOR_BGR2RGB)
+    source_image_bgr = cv2.imread(str(source_image_path))
+    source_image = cv2.cvtColor(source_image_bgr, cv2.COLOR_BGR2RGB)
+
     target_image_bgr = cv2.imread(str(target_image_path))
     target_image = cv2.cvtColor(target_image_bgr, cv2.COLOR_BGR2RGB)
 
-    # source_cropped_face = np.array(Image.open(source_cropped_face_path))
+    # source_face = np.array(Image.open(source_face_path))
     # target_image = np.array(Image.open(target_image_path))
 
+    if source_image is None:
+        logger.error(f"error reading source image..")
+        return 
+    
     if target_image is None:
         logger.error(f"error reading target image..")
         return 
     
+    if is_detect_source_face:
+        source_faces = face_detector.detect_faces_wrapper(str(source_image_path))
+        if not source_faces:
+            logger.debug(f"No face detected in source image skipping.. {source_image_path}")
+            return None
+
     if not target_face_dict:
-        json_annotation_filepath = get_face_det_res_json_filepath(target_image_path)
-        if os.path.exists(json_annotation_filepath):
-            faces = read_face_det_json_annotation_file(json_annotation_filepath)
-            logger.debug(f"loaded face detection result from .json file")
-        else:
-            faces = detect_faces(target_image)
-            # save result as a json
-            store_face_det_result(json_annotation_filepath, faces)
-            logger.debug(f"Stored face detection result in .json")
+        faces = face_detector.detect_faces_wrapper(str(target_image_path))
 
     if faces:
         target_face_dict = faces[0]
 
     if target_face_dict:
-        coordinates = get_face_coordinates(target_face_dict)
+        coordinates = face_detector.get_face_coordinates(target_face_dict)
 
-        # check orientation
-        face_angle, orientation = calculate_face_orientation(target_face_dict["kps"])
-        logger.debug(f"face_angle: {face_angle}")
-        logger.debug(f"orientation: {orientation}")
+        # # check orientation
+        # face_angle, orientation = face_detector.calculate_face_orientation(target_face_dict["kps"])
+        # logger.debug(f"face_angle: {face_angle}")
+        # logger.debug(f"orientation: {orientation}")
 
-        if orientation == "Upside-Right":
-            source_cropped_face = cv2.rotate(source_cropped_face, cv2.ROTATE_180)
-            orientation == "Upside-Right" # in case face angle condition true
-        elif orientation == "Rotated-Right":
-            source_cropped_face = cv2.rotate(source_cropped_face, cv2.ROTATE_90_CLOCKWISE)
-        elif orientation == "Rotated-Left":
-            # Using cv2.ROTATE_90_COUNTERCLOCKWISE
-            # rotate by 270 degrees clockwise
-            source_cropped_face = cv2.rotate(source_cropped_face, cv2.ROTATE_90_COUNTERCLOCKWISE)
-        else:
-            "Upside-Down"
-            pass
+        # if orientation == "Upside-Right":
+        #     source_cropped_face = cv2.rotate(source_cropped_face, cv2.ROTATE_180)
+        #     orientation == "Upside-Right" # in case face angle condition true
+        # elif orientation == "Rotated-Right":
+        #     source_cropped_face = cv2.rotate(source_cropped_face, cv2.ROTATE_90_CLOCKWISE)
+        # elif orientation == "Rotated-Left":
+        #     # Using cv2.ROTATE_90_COUNTERCLOCKWISE
+        #     # rotate by 270 degrees clockwise
+        #     source_cropped_face = cv2.rotate(source_cropped_face, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        # else:
+        #     "Upside-Down"
+        #     pass
 
         # margin
         if is_add_margin:
@@ -112,30 +112,31 @@ def replace_face(
                 top_margin_percent = random.uniform(0.1, 0.3)
                 bottom_margin_percent = random.uniform(0.1, 0.3)
             else:
-                if orientation in ["Rotated-Left"]:
-                    left_margin_percent = 0.3
-                    right_margin_percent = 0.2
-                    top_margin_percent = 0.4
-                    bottom_margin_percent = 0.4
-                elif orientation == "Rotated-Right":
-                    left_margin_percent = 0.2
-                    right_margin_percent = 0.2
-                    top_margin_percent = 0.4
-                    bottom_margin_percent = 0.4
+                # if orientation in ["Rotated-Left"]:
+                #     left_margin_percent = 0.3
+                #     right_margin_percent = 0.2
+                #     top_margin_percent = 0.4
+                #     bottom_margin_percent = 0.4
+                # elif orientation == "Rotated-Right":
+                #     left_margin_percent = 0.2
+                #     right_margin_percent = 0.2
+                #     top_margin_percent = 0.4
+                #     bottom_margin_percent = 0.4
 
-                elif orientation == "Upside-Right":
-                    left_margin_percent = 0.4
-                    right_margin_percent = 0.4
-                    top_margin_percent = 0.2
-                    bottom_margin_percent = 0.2
-                else:
-                    # Upside-Down
-                    left_margin_percent = 0.35 
-                    right_margin_percent = 0.35
-                    top_margin_percent = 0.4
-                    bottom_margin_percent = 0.4
+                # elif orientation == "Upside-Right":
+                #     left_margin_percent = 0.4
+                #     right_margin_percent = 0.4
+                #     top_margin_percent = 0.2
+                #     bottom_margin_percent = 0.2
+                # else:
+
+                # Upside-Down
+                left_margin_percent = 0.35 
+                right_margin_percent = 0.35
+                top_margin_percent = 0.4
+                bottom_margin_percent = 0.4
             
-            coordinates = add_margin_to_rect(
+            coordinates = face_detector.add_margin_to_rect(
                 rect=coordinates, 
                 left_margin_percent=left_margin_percent, 
                 right_margin_percent=right_margin_percent, 
@@ -143,12 +144,30 @@ def replace_face(
                 bottom_margin_percent=bottom_margin_percent, 
                 image_shape=target_image.shape
             )
+        
+        if is_detect_source_face:
+            source_coordinates = face_detector.get_face_coordinates(source_faces[0])
+            if is_add_margin:
+                source_coordinates = face_detector.add_margin_to_rect(
+                    rect=source_coordinates, 
+                    left_margin_percent=left_margin_percent, 
+                    right_margin_percent=right_margin_percent, 
+                    top_margin_percent=top_margin_percent, 
+                    bottom_margin_percent=bottom_margin_percent, 
+                    image_shape=source_image.shape
+                )
+            source_cropped_face = face_detector.crop_face(source_image, source_coordinates)
+        else:
+            source_cropped_face = source_image # if already cropped face input given
 
+        # import ipdb; ipdb.set_trace()
+        
         # resize source face as per target face area
-        x, y, w, h = coordinates
+        x1, y1, x2, y2 = coordinates
+        x, y, w, h = int(x1), int(y1), int((x2 -x1)), int(y2 - y1)
         resized_source_face = cv2.resize(source_cropped_face, (w, h))
 
-        if clone:
+        if use_seamless_clone:
             resized_source_face_mask = 250 * np.ones(resized_source_face.shape, resized_source_face.dtype) # white mask
             center = (x+w//2,y+h//2)
             # Clone seamlessly.
@@ -158,12 +177,36 @@ def replace_face(
             )
             return output
         
-        target_image[y:y+h,x:x+w] = resized_source_face[:,:]
+        if is_paste_on_transparent_container:
+            # Ensure target_image has an alpha channel
+            if target_image.shape[2] == 3:
+                target_image = cv2.cvtColor(target_image, cv2.COLOR_BGR2BGRA)
+
+            # Ensure resized_source_face has an alpha channel
+            if resized_source_face.shape[2] == 3:
+                resized_source_face = cv2.cvtColor(resized_source_face, cv2.COLOR_BGR2BGRA)
+
+            # Extract the region from the target image where the resized_source_face will be pasted
+            region_target = target_image[y:y+h, x:x+w]
+
+            # # Alpha blending
+            # alpha_s = resized_source_face[:, :, 3] / 255.0
+            # alpha_t = region_target[:, :, 3] / 255.0
+
+            # for c in range(0, 3):
+            #     region_target[:, :, c] = (alpha_s * resized_source_face[:, :, c] +
+            #                             alpha_t * region_target[:, :, c] * (1 - alpha_s))
+            # region_target[:, :, 3] = (alpha_s + alpha_t * (1 - alpha_s)) * 255
+
+            # Replace the region in the target image
+            target_image[y:y+h, x:x+w] = region_target
+        else:
+            target_image[y:y+h,x:x+w] = resized_source_face[:,:]
 
         return target_image
     else:
         return None
-  
+ 
 if __name__ == '__main__':
 
     BASE_DIR = Path(__file__).resolve().parent
@@ -187,7 +230,7 @@ if __name__ == '__main__':
         use_seamless_clone = True
 
     # Face replacement
-    replaced = replace_face(source_path, target_path, clone=use_seamless_clone)
+    replaced = perform_face_replacement(source_path, target_path, clone=use_seamless_clone)
     
     if np.any(replaced):
         # Save output in output_dir
