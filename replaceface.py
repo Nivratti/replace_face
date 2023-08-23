@@ -178,28 +178,18 @@ def perform_face_replacement(
             return output
         
         if is_paste_on_transparent_container:
-            # Ensure target_image has an alpha channel
-            if target_image.shape[2] == 3:
-                target_image = cv2.cvtColor(target_image, cv2.COLOR_BGR2BGRA)
+            height, width = target_image.shape[:2]
+
+            # Create a transparent RGBA image
+            transparent_image = np.zeros((height, width, 4), dtype=np.uint8)
 
             # Ensure resized_source_face has an alpha channel
             if resized_source_face.shape[2] == 3:
-                resized_source_face = cv2.cvtColor(resized_source_face, cv2.COLOR_BGR2BGRA)
-
-            # Extract the region from the target image where the resized_source_face will be pasted
-            region_target = target_image[y:y+h, x:x+w]
-
-            # # Alpha blending
-            # alpha_s = resized_source_face[:, :, 3] / 255.0
-            # alpha_t = region_target[:, :, 3] / 255.0
-
-            # for c in range(0, 3):
-            #     region_target[:, :, c] = (alpha_s * resized_source_face[:, :, c] +
-            #                             alpha_t * region_target[:, :, c] * (1 - alpha_s))
-            # region_target[:, :, 3] = (alpha_s + alpha_t * (1 - alpha_s)) * 255
+                resized_source_face = np.dstack((resized_source_face, np.where((resized_source_face == [255, 255, 255]).all(axis=-1), 0, 255)))
 
             # Replace the region in the target image
-            target_image[y:y+h, x:x+w] = region_target
+            transparent_image[y:y+h, x:x+w] = resized_source_face[:,:]
+            return transparent_image
         else:
             target_image[y:y+h,x:x+w] = resized_source_face[:,:]
 
