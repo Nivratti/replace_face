@@ -156,10 +156,13 @@ def perform_face_replacement(
                     bottom_margin_percent=bottom_margin_percent, 
                     image_shape=source_image.shape
                 )
-            source_cropped_face = face_detector.crop_face(source_image, source_coordinates)
+            source_cropped_face = face_detector.crop_face(
+                source_image, source_coordinates,
+                image_color_space="RGB"
+            )
         else:
             source_cropped_face = source_image # if already cropped face input given
-
+            
         # import ipdb; ipdb.set_trace()
         
         # resize source face as per target face area
